@@ -1,5 +1,5 @@
 // Auto generated code file.  Blender: 3.3.9  Blender Tools: (2, 1, 2)
-// Date: Mon Aug 14 00:11:42 2023
+// Date: Tue Aug 15 21:25:26 2023
 
 
 #include "orbitersdk.h"
@@ -14,28 +14,28 @@ namespace bl
 
   namespace HR1 
   {
-    const DWORD TXIDX_Lower_fuselage_dds = 1;
-    const DWORD TXIDX_Upper_fuselage_dds = 2;
+    const DWORD TXIDX_Wheels_dds = 1;
+    const DWORD TXIDX_Lower_fuselage_dds = 2;
+    const DWORD TXIDX_Upper_fuselage_dds = 3;
     constexpr auto MESH_NAME = "HR1";
 
     const UINT Cylinder_frontId = 0;
     const UINT Front_wheelsId = 1;
-    const UINT Cylinder_leftId = 2;
-    const UINT left_rear_wheelsId = 3;
-    const UINT Cylinder_rightId = 4;
-    const UINT right_front_wheelsId = 5;
-    const UINT 02_HullId = 6;
-    const UINT 03_Landing_gear_front_doorId = 7;
-    const UINT 04_Landing_gear_rear_doorId = 8;
-    const UINT 07_SeatId = 9;
-    const UINT 06_CockpitId = 10;
-    const UINT 01_FuselageId = 11;
-    const UINT 07_Docking_portId = 12;
-    const UINT 05_WindowId = 13;
+    const UINT left_rear_wheelsId = 2;
+    const UINT Cylinder_rightId = 3;
+    const UINT right_front_wheelsId = 4;
+    const UINT 02_HullId = 5;
+    const UINT 03_Landing_gear_front_doorId = 6;
+    const UINT 04_Landing_gear_rear_doorId = 7;
+    const UINT 07_SeatId = 8;
+    const UINT 06_CockpitId = 9;
+    const UINT 01_FuselageId = 10;
+    const UINT 07_Docking_portId = 11;
+    const UINT 05_WindowId = 12;
     constexpr VECTOR3 02_HullLocation =     {0.0046, -0.4042, -0.0988};
     constexpr VECTOR3 05_WindowLocation =     {0.0000, 1.2342, 4.9630};
-    constexpr VECTOR3 03_Landing_gear_front_doorLocation =     {0.0000, -0.6371, 5.6754};
-    constexpr VECTOR3 04_Landing_gear_rear_doorLocation =     {-0.0000, -0.7753, -0.2039};
+    constexpr VECTOR3 03_Landing_gear_front_doorLocation =     {-0.0012, -0.5961, 6.0557};
+    constexpr VECTOR3 04_Landing_gear_rear_doorLocation =     {3.1421, -0.7982, 0.6229};
     constexpr VECTOR3 07_SeatLocation =     {0.0000, 0.7052, 4.4127};
     constexpr VECTOR3 06_CockpitLocation =     {-0.0003, 0.4068, 4.2105};
     constexpr VECTOR3 Docking_port_locationLocation =     {-0.0563, 1.8099, 1.7193};
@@ -66,9 +66,8 @@ namespace bl
     constexpr VECTOR3 GUTP_3Location =     {14.9999, -0.1925, -7.3871};
     constexpr VECTOR3 Cylinder_frontLocation =     {0.0109, -1.1696, 5.6620};
     constexpr VECTOR3 Front_wheelsLocation =     {0.0122, -2.1373, 5.6547};
-    constexpr VECTOR3 Cylinder_leftLocation =     {-3.2869, -1.1696, -0.2766};
     constexpr VECTOR3 left_rear_wheelsLocation =     {-3.2855, -2.1373, -0.2840};
-    constexpr VECTOR3 Cylinder_rightLocation =     {3.2320, -1.1696, -0.2817};
+    constexpr VECTOR3 Cylinder_rightLocation =     {-0.0274, -1.1696, -0.2792};
     constexpr VECTOR3 right_front_wheelsLocation =     {3.2333, -2.1373, -0.2890};
     constexpr VECTOR3 GDTP1Location =     {-0.0064, -2.5830, 5.6383};
     constexpr VECTOR3 GDTP2Location =     {3.2436, -2.5830, -0.3017};

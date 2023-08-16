@@ -12,7 +12,6 @@
 
 #include "HR1.h"
 
-bool geardown = true;//Gear initial status
 
 //Define impact convex hull
 //For gear up
@@ -166,21 +165,27 @@ void HR1::clbkSetClassCaps(FILEHANDLE cfg){
 
 void HR1::SetGearUp(){
 	HR1::SetTouchdownPoints(tdvtx_gearup, ntdvtx_gearup);
-	geardown = false;
+	//geardown = false;
 }
 
 void HR1::SetGearDown(){
 	HR1::SetTouchdownPoints(tdvtx_geardown, ntdvtx_geardown);
-	geardown = true;
+	//geardown = true;
 }
 
 int HR1::clbkConsumeBufferedKey(int key, bool down, char *kstate){
-	if(key == OAPI_KEY_G && geardown == true){
-		SetGearUp();
-	} else {
-		SetGearDown();
-	}
-	return 0;
+    static bool gearToggled = false; // Variable para rastrear el cambio de tren de aterrizaje
+
+    if (key == OAPI_KEY_G && down) {
+        if (gearToggled) {
+            SetGearUp();
+        } else {
+            SetGearDown();
+        }
+        gearToggled = !gearToggled; // Cambia el estado de la variable
+    }
+
+    return 0;
 }
 
 //Airfoil lift function
