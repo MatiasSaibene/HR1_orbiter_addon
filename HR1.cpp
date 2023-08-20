@@ -7,60 +7,83 @@
 // HR1.cpp
 // Control module for HR1 vessel class
 //==============================================================
-
 #define ORBITER_MODULE
-
 #include "HR1.h"
+#include <algorithm>
+#include <stdio.h>
+#include <strings.h>
 
+bool lg_st_down = true;
 
-//Define impact convex hull
-//For gear up
-static const int ntdvtx_gearup = 13;
-static TOUCHDOWNVTX tdvtx_gearup[ntdvtx_gearup] = {
-	{_V(-0.0462, -1.3864, -1.8138), 1e7, 1e5, 3.0, 3.0},
-	{_V(-15.1351, -0.1925, -7.3871), 1e7, 1e5, 3.0, 3.0},
-	{_V(-0.0154, -1.5586, 3.1718), 1e7, 1e5, 3.0, 3.0},
-	{_V(1.3849, -1.6702, 0.9560), 1e7, 1e5, 3.0, 3.0},
-	{_V(-1.3849, -1.6702, 0.9560), 1e7, 1e5, 3.0, 3.0},
-	{_V(14.9999, -0.1925, -7.3871), 1e7, 1e5, 3.0, 3.0},
-	{_V(-0.0154, -0.5807, 6.1832), 1e7, 1e5, 3.0, 3.0},
-	{_V(-0.0462, -0.6670, -5.8221), 1e7, 1e5, 3.0, 3.0},
-	{_V(-1.7821, 0.3891, -5.8221), 1e7, 1e5, 3.0, 3.0},
-	{_V(1.7690, 0.3891, -5.8221), 1e7, 1e5, 3.0, 3.0},
-	{_V(-0.0154, 1.1046, 6.1832), 1e7, 1e5, 3.0, 3.0},
-	{_V(-0.0154, 1.9840, 3.1718), 1e7, 1e5, 3.0, 3.0},
-	{_V(-0.0154, 0.7840, -2.2576), 1e7, 1e5, 3.0, 3.0},
-};
-//For gear down
-static const int ntdvtx_geardown = 3;
-static TOUCHDOWNVTX tdvtx_geardown[ntdvtx_geardown] = {
-	{_V(-0.0064, -2.5830, 5.6383), 1e6, 1e5, 1.6, 0.1},
-	{_V(3.2436, -2.5830, -0.3017), 1e6, 1e5, 1.6, 0.1},
-	{_V(-3.2864, -2.5830, -0.3017), 1e6, 1e5, 1.6, 0.1},
-};
-
-//HR1 class interface
-class HR1: public VESSEL3{
-    public:
-        HR1 (OBJHANDLE hVessel, int flightmodel);
-        ~HR1(); //Destructor
-        void clbkSetClassCaps(FILEHANDLE cfg);
-		int clbkConsumeBufferedKey(int, bool, char *);
-		void SetGearUp();
-		void SetGearDown();
-	private:
-	static void hlift(VESSEL *v, double aoa, double M, double Re, void *context, double *cl, double *cm, double *cd);
-};
 
 HR1::HR1(OBJHANDLE hVessel, int flightmodel)
 :VESSEL3(hVessel, flightmodel){
-
+	landing_gear_proc = 0.0;
+	landing_gear_status = GEAR_DOWN;
+	DefineAnimations();
+	hr1_vc = oapiLoadMeshGlobal("HR1_VC");
 }
 
 HR1::~HR1(){
-
 } //Destructor
 
+//Define animations
+void HR1::DefineAnimations(void){
+	//Close landing gear door
+	static unsigned int FrontLandingGearDoorGrp[1] = {6};
+	static MGROUP_ROTATE FrontLandingGearDoor_Rotate(
+		0,
+		FrontLandingGearDoorGrp,
+		1,
+		_V(-0.0119, -0.5923, 6.0787),
+		_V(1, 0, 0),
+		(float)(1.67552)
+	);
+
+	static unsigned int LandingGearRotateGrp[2] = {0, 1};
+	static MGROUP_ROTATE LandingGear_Rotate(
+		0,
+		LandingGearRotateGrp,
+		2,
+		_V(0.0131, -0.3919, 5.6599),
+		_V(1, 0, 0),
+		(float)(1.57079)
+	);
+
+	static unsigned int RearLandingGear_ScaleGrp[1] = {3};
+	static MGROUP_SCALE RearLandingGear_Scale(
+		0,
+		RearLandingGear_ScaleGrp,
+		1,
+		_V(0.0131, -0.3919, -0.2792),
+		_V(1, 0.12, 1)
+	);
+
+	static unsigned int RearLandingGear_TranslateGrp[2] = {2, 4};
+	static MGROUP_TRANSLATE RearLandingGear_Translate(
+		0,
+		RearLandingGear_TranslateGrp,
+		2,
+		_V(0, 2 , 0)
+	);
+
+	static unsigned int RearLandingGear_CloseGrp[1] = {7};
+	static MGROUP_TRANSLATE RearLandingGear_Close(
+		0,
+		RearLandingGear_CloseGrp,
+		1,
+		_V(0, 0, -1.5)
+	);
+
+	anim_landing_gear = CreateAnimation(0.0);
+
+	AddAnimationComponent(anim_landing_gear, 0, 1, &FrontLandingGearDoor_Rotate);
+	AddAnimationComponent(anim_landing_gear, 0, 1, &LandingGear_Rotate);
+	AddAnimationComponent(anim_landing_gear, 0, 1, &RearLandingGear_Scale);
+	AddAnimationComponent(anim_landing_gear, 0, 1, &RearLandingGear_Translate);
+	AddAnimationComponent(anim_landing_gear, 0, 1, &RearLandingGear_Close);
+		
+}
 
 // Overloaded callback functions
 // Set the capabilities of the vessel class
@@ -68,12 +91,16 @@ void HR1::clbkSetClassCaps(FILEHANDLE cfg){
     THRUSTER_HANDLE th_main[2], th_rcs[15], th_group[4];
 	THGROUP_HANDLE thg_main;
 
+	hwing = CreateAirfoil3 (LIFT_VERTICAL, _V(0,0,-0.3), vlift, 0, 5, 90, 1.5);
+	// wing and body lift+drag components
+
+	CreateAirfoil3 (LIFT_HORIZONTAL, _V(0,0,-4), hlift, 0, 5, 15, 1.5);
+
     //Physical vessel resources
     SetSize(HR1_SIZE);
     SetEmptyMass(HR1_EMPTYMASS);
 	SetDockParams(HR1_DOCK_POS, HR1_DOCK_DIR, HR1_DOCK_ROT);
-	SetTouchdownPoints(tdvtx_gearup, ntdvtx_gearup);
-	CreateAirfoil3(LIFT_HORIZONTAL, HR1_CoP, hlift, NULL, HR1_HLIFT_C, HR1_HLIFT_S, HR1_HLIFT_A);
+
 
     //Propellant resources
     PROPELLANT_HANDLE UXPS = CreatePropellantResource(HR1_FUELMASS);
@@ -161,48 +188,119 @@ void HR1::clbkSetClassCaps(FILEHANDLE cfg){
 
     //Mesh for the visual
     AddMesh("HR1");
+
+	mesh_Cockpit = AddMesh(hr1_vc, &HR1_COCKPIT_OFFSET);
+	SetMeshVisibilityMode(mesh_Cockpit, MESHVIS_VC);
 }
 
-void HR1::SetGearUp(){
-	HR1::SetTouchdownPoints(tdvtx_gearup, ntdvtx_gearup);
-	//geardown = false;
+void HR1::clbkLoadStateEx(FILEHANDLE scn, void *vs){
+	char *line;
+
+	while(oapiReadScenario_nextline(scn, line)){
+		if(!strncasecmp(line, "GEAR", 4)){
+			sscanf(line+4, "%d%lf", (int *)&landing_gear_status, &landing_gear_proc);
+		} else {
+			ParseScenarioLineEx(line, vs);
+		}
+	}
+	SetAnimation(anim_landing_gear, landing_gear_proc);
 }
 
-void HR1::SetGearDown(){
-	HR1::SetTouchdownPoints(tdvtx_geardown, ntdvtx_geardown);
-	//geardown = true;
+void HR1::clbkSaveState(FILEHANDLE scn){
+	char cbuf[256];
+	SaveDefaultState(scn);
+	sprintf(cbuf, "%d %0.4f", landing_gear_status, landing_gear_proc);
+	oapiWriteScenario_string(scn, "GEAR", cbuf);
+}
+
+void HR1::SetGearDown(void){
+	ActivateLandingGear((landing_gear_status == GEAR_DOWN || landing_gear_status == GEAR_DEPLOYING) ?
+		GEAR_STOWING : GEAR_DEPLOYING);
+}
+
+void HR1::ActivateLandingGear(LandingGearStatus action){
+	landing_gear_status = action;
+}
+
+//Giving life to animations
+void HR1::clbkPostStep(double simt, double simdt, double mjd){
+
+	if(landing_gear_status >= GEAR_DEPLOYING){
+		double da = simdt * LANDING_GEAR_OPERATING_SPEED;
+		if(landing_gear_status == GEAR_DEPLOYING){
+			if(landing_gear_proc > 0.0) landing_gear_proc = std::max(0.0, landing_gear_proc-da);
+			else landing_gear_status = GEAR_DOWN;
+			SetTouchdownPoints(tdvtx_geardown, ntdvtx_geardown);
+		} else {
+			if(landing_gear_proc < 1.0) landing_gear_proc = std::min(1.0, landing_gear_proc+da);
+			else landing_gear_status = GEAR_UP;
+			SetTouchdownPoints(tdvtx_gearup, ntdvtx_gearup);
+		}
+		SetAnimation(anim_landing_gear, landing_gear_proc);
+	}
 }
 
 int HR1::clbkConsumeBufferedKey(int key, bool down, char *kstate){
-    static bool gearToggled = false; // Variable para rastrear el cambio de tren de aterrizaje
-
-    if (key == OAPI_KEY_G && down) {
-        if (gearToggled) {
-            SetGearUp();
-        } else {
-            SetGearDown();
-        }
-        gearToggled = !gearToggled; // Cambia el estado de la variable
-    }
-
-    return 0;
+	if(key == OAPI_KEY_G && down){
+		SetGearDown();
+		return 1;
+	}
+	return 0;
 }
+
+bool HR1::clbkLoadVC(int id){
+	switch(id){
+		case 0 : SetCameraOffset(_V(0.0015, 1.3051, 4.5500));
+		SetCameraDefaultDirection(_V(0, 0, 1));
+		SetCameraRotationRange(RAD*120, RAD*120, RAD*60, RAD*60);
+		break;//Commander's position	
+	}
+	return true;
+}
+
+
 
 //Airfoil lift function
-void HR1::hlift(VESSEL *v, double aoa, double M, double Re, void *context, double *cl, double *cm, double *cd){
-	static const double clp[] = {  // lift coefficient from -pi to pi in 45deg steps
-		0,0.4,0,-0.4,0,0.4,0,-0.4,0,0.4
-	};
-	static const double aoa_step = 45.0*RAD;
-	double a, fidx;
-	a = modf((aoa+PI)/aoa_step, &fidx);
-	int idx = (int)(fidx+0.5);
-	*cl = clp[idx]*(1.0-a) + clp[idx+1]*a;     // linear interpolation
+void HR1::hlift(VESSEL *v, double beta, double M, double Re, void *context, double *cl, double *cm, double *cd){
+	int i;
+	const int nabsc = 8;
+	static const double BETA[nabsc] = {-180*RAD,-135*RAD,-90*RAD,-45*RAD,45*RAD,90*RAD,135*RAD,180*RAD};
+	static const double CL[nabsc]   = {       0,    +0.3,      0,   -0.3,  +0.3,     0,   -0.3,      0};
+	for (i = 0; i < nabsc-1 && BETA[i+1] < beta; i++);
+	if (i < nabsc - 1) {
+		*cl = CL[i] + (CL[i + 1] - CL[i]) * (beta - BETA[i]) / (BETA[i + 1] - BETA[i]);
+	}
+	else {
+		*cl = CL[nabsc - 1];
+	}
 	*cm = 0.0;
-	*cd = 0.03;
-	*cd += oapiGetInducedDrag (*cl, 1.5, 0.6); // induced drag
-	*cd += oapiGetWaveDrag (M, 0.75, 1.0, 1.1, 0.04);  // wave drag
+	*cd = 0.015 + oapiGetInducedDrag (*cl, 1.5, 0.6) + oapiGetWaveDrag (M, 0.75, 1.0, 1.1, 0.04);
 }
+
+
+void HR1::vlift(VESSEL *v, double aoa, double M, double Re, void *context, double *cl, double *cm, double *cd)
+{
+	const int nabsc = 9;
+	static const double AOA[nabsc] = {-180*RAD,-60*RAD,-30*RAD, -2*RAD, 15*RAD,20*RAD,25*RAD,60*RAD,180*RAD};
+	static const double CL[nabsc]  = {       0,      0,   -0.4,      0,    0.7,     1,   0.8,     0,      0};
+	static const double CM[nabsc]  = {       0,      0,  0.014, 0.0039, -0.006,-0.008,-0.010,     0,      0};
+	int i;
+	for (i = 0; i < nabsc-1 && AOA[i+1] < aoa; i++);
+	if (i < nabsc - 1) {
+		double f = (aoa - AOA[i]) / (AOA[i + 1] - AOA[i]);
+		*cl = CL[i] + (CL[i + 1] - CL[i]) * f;  // aoa-dependent lift coefficient
+		*cm = CM[i] + (CM[i + 1] - CM[i]) * f;  // aoa-dependent moment coefficient
+	}
+	else {
+		*cl = CL[nabsc - 1];
+		*cm = CM[nabsc - 1];
+	}
+	double saoa = sin(aoa);
+	double pd = 0.015 + 0.4*saoa*saoa;  // profile drag
+	*cd = pd + oapiGetInducedDrag (*cl, 1.5, 0.7) + oapiGetWaveDrag (M, 0.75, 1.0, 1.1, 0.04);
+	// profile drag + (lift-)induced drag + transonic/supersonic wave (compressibility) drag
+}
+
 
 //Vessel initialization
 DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel){
