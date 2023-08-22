@@ -11,9 +11,11 @@ const VECTOR3 HR1_CS = {29.83, 217.14, 30.92};
 const double HR1_EMPTYMASS = 12000; //Empty mass in kg.
 const double HR1_FUELMASS = 1000; //Fuel mass in kg.
 const double HR1_ISP = 25e4; //Fuel-specific impulse in m/s.
-const double HR1_MAXMAINTH = 12e4; //Max main thrust.
+//const double HR1_MAXMAINTH = 12e4; //Max main thrust.
+const double HR1_MAXMAINTH = 2.0e5;
 const double HR1_MAXHOVERTH = 1.5e4; //Max hover thrust.
-const double HR1_MAXRCSTH = 6e4; //Max RCS thrust.
+//const double HR1_MAXRCSTH = 6e4; //Max RCS thrust.
+const double HR1_MAXRCSTH = 8.0e3;
 const VECTOR3 HR1_DOCK_POS = {-0.0563, 1.8099, 1.7193}; //Docking port location.
 const VECTOR3 HR1_DOCK_DIR = {0, 1, 0}; //Docking port approach direction.
 const VECTOR3 HR1_DOCK_ROT = {0, 0, -1}; //Docking port alignment direction.
@@ -54,11 +56,16 @@ static TOUCHDOWNVTX tdvtx_geardown[ntdvtx_geardown] = {
 class HR1: public VESSEL3{
     public:
 		enum LandingGearStatus {GEAR_DOWN, GEAR_UP, GEAR_DEPLOYING, GEAR_STOWING} landing_gear_status;
+		enum DockingPortStatus {DCK_CLOSED, DCK_OPEN, DCK_CLOSING, DCK_OPENING} docking_port_status;
         HR1(OBJHANDLE hVessel, int flightmodel);
         virtual ~HR1(); //Destructor
 		void DefineAnimations(void);
 		void ActivateLandingGear(LandingGearStatus action);
 		void SetGearDown(void);
+		void ActivateDockingPort(DockingPortStatus actiondckp);
+		void CloseDockingPort(void);
+		void UpdateLandingGearAnimation(double);
+		void UpdateDockingPortAnimation(double);
 
         void clbkSetClassCaps(FILEHANDLE cfg) override;
         void clbkLoadStateEx(FILEHANDLE scn, void *vs) override;
@@ -75,8 +82,11 @@ class HR1: public VESSEL3{
 
 	private:
 	unsigned int anim_landing_gear;
+	unsigned int anim_docking_port;
 	double landing_gear_proc;
+	double docking_port_proc;
 	AIRFOILHANDLE hwing;
+	CTRLSURFHANDLE hlaileron, hraileron;
 };
 
 #endif  // !__HR1_H
