@@ -7,7 +7,9 @@
 // HR1.cpp
 // Control module for HR1 vessel class
 //==============================================================
+
 #define ORBITER_MODULE
+#include <cstdint>
 #include "HR1.h"
 #include <algorithm>
 #include <stdio.h>
@@ -20,9 +22,12 @@ HR1::HR1(OBJHANDLE hVessel, int flightmodel)
 	landing_gear_status = GEAR_DOWN;
 	DefineAnimations();
 	hr1_vc = oapiLoadMeshGlobal("HR1_VC");
+	hPanelMesh = NULL;
 }
 
+
 HR1::~HR1(){
+  if (hPanelMesh) oapiDeleteMesh (hPanelMesh);
 } //Destructor
 
 //Define animations
@@ -369,7 +374,58 @@ bool HR1::clbkLoadVC(int id){
 	return true;
 }
 
+SURFHANDLE HR1::panel2dtex = NULL;
 
+bool HR1::clbkLoadPanel2D (int id, PANELHANDLE hPanel,
+  int viewW, int viewH)
+{
+  switch (id) {
+  case 0 : 
+    DefineMainPanel (hPanel);
+    ScalePanel (hPanel, viewW, viewH);
+    return true;
+  default:
+    return false;
+  }
+}
+
+
+
+void HR1::DefineMainPanel (PANELHANDLE hPanel)
+{
+  static int panelW = 1280;
+  static int panelH =  400;
+  float fpanelW = (float)panelW;
+  float fpanelH = (float)panelH;
+  static int texW   = 2048;
+  static int texH   = 1024;
+  float ftexW   = (float)texW;
+  float ftexH   = (float)texH;
+  static NTVERTEX VTX[4] = {
+		{     0,     0,0,   0,0,0,   0.0f,        1.0f - fpanelH/texH},
+		{     0,fpanelH,0,   0,0,0,   0.0f,        1.0f},
+		{fpanelW,fpanelH,0,   0,0,0,   fpanelW/texW, 1.0f},
+		{fpanelW,     0,0,   0,0,0,   fpanelW/texW, 1.0f - fpanelH/texH}
+	};
+	static uint16_t IDX[6] = {
+		0,2,1,
+		2,0,3
+	};
+
+  if (hPanelMesh) oapiDeleteMesh (hPanelMesh);
+  hPanelMesh = oapiCreateMesh (0,0);
+  MESHGROUP grp = {VTX, IDX, 4, 6, 0, 0, 0, 0, 0};
+  oapiAddMeshGroup (hPanelMesh, &grp);
+  SetPanelBackground (hPanel, &panel2dtex, 1,  hPanelMesh, panelW, panelH, 0,
+    PANEL_ATTACH_BOTTOM | PANEL_MOVEOUT_BOTTOM);
+} 
+
+void HR1::ScalePanel (PANELHANDLE hPanel, int viewW, int viewH)
+{
+  double defscale = (double)viewW/(double)1280.0;
+  double magscale = std::max (defscale, 1.0);
+  SetPanelScaling (hPanel, defscale, magscale);
+}
 
 //Airfoil lift function
 void HR1::hlift(VESSEL *v, double beta, double M, double Re, void *context, double *cl, double *cm, double *cd){
@@ -387,7 +443,6 @@ void HR1::hlift(VESSEL *v, double beta, double M, double Re, void *context, doub
 	*cm = 0.0;
 	*cd = 0.015 + oapiGetInducedDrag (*cl, 1.5, 0.6) + oapiGetWaveDrag (M, 0.75, 1.0, 1.1, 0.04);
 }
-
 
 void HR1::vlift(VESSEL *v, double aoa, double M, double Re, void *context, double *cl, double *cm, double *cd)
 {
@@ -412,11 +467,27 @@ void HR1::vlift(VESSEL *v, double aoa, double M, double Re, void *context, doubl
 	// profile drag + (lift-)induced drag + transonic/supersonic wave (compressibility) drag
 }
 
+DLLCLBK void InitModule (MODULEHANDLE hModule)
+{
+   
+   HR1::panel2dtex = oapiLoadTexture ("HR1\\panel2d.dds");
+    
+}
+
+
+DLLCLBK void ExitModule (MODULEHANDLE *hModule)
+{
+   
+   oapiDestroySurface (HR1::panel2dtex);
+    
+}
+
 
 //Vessel initialization
 DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel){
     return new HR1(hvessel, flightmodel);
 }
+
 
 //Vessel memory cleanup
 DLLCLBK void ovcExit(VESSEL *vessel){

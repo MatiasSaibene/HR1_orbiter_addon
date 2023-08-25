@@ -5,6 +5,7 @@
 
 #include "Orbitersdk.h"
 
+
 //Vessel parameters
 const double HR1_SIZE = 16; //Mean radius in meters.
 const VECTOR3 HR1_CS = {29.83, 217.14, 30.92};
@@ -73,12 +74,18 @@ class HR1: public VESSEL3{
 		void clbkPostStep(double, double, double) override;
 		int clbkConsumeBufferedKey(int, bool, char *) override;
 		bool clbkLoadVC(int id) override;
+		virtual bool clbkLoadPanel2D(int id, PANELHANDLE hPanel, int viewW, int viewH) override;
 		static void hlift(VESSEL *v, double beta, double M, double Re, void *context, double *cl, double *cm, double *cd);
 		static void vlift(VESSEL *v, double aoa, double M, double Re, void *context, double *cl, double *cm, double *cd);
+		void DefineMainPanel (PANELHANDLE hPanel);
+		void ScalePanel (PANELHANDLE hPanel, int viewW, int viewH);
 		
 
 		MESHHANDLE hr1_vc;
+		MESHHANDLE hPanelMesh;
 		unsigned int mesh_Cockpit;
+		static SURFHANDLE panel2dtex;
+		
 
 	private:
 	unsigned int anim_landing_gear;
@@ -88,5 +95,8 @@ class HR1: public VESSEL3{
 	AIRFOILHANDLE hwing;
 	CTRLSURFHANDLE hlaileron, hraileron;
 };
+
+
+
 
 #endif  // !__HR1_H
