@@ -1,10 +1,10 @@
 #ifndef __HR1_H
 #define __HR1_H
 
+
 #define STRICT 1
-
+#include "OrbiterAPI.h"
 #include "Orbitersdk.h"
-
 
 //Vessel parameters
 const double HR1_SIZE = 16; //Mean radius in meters.
@@ -67,6 +67,8 @@ class HR1: public VESSEL3{
 		void CloseDockingPort(void);
 		void UpdateLandingGearAnimation(double);
 		void UpdateDockingPortAnimation(double);
+		void SndBarrierEffect(double);
+
 
         void clbkSetClassCaps(FILEHANDLE cfg) override;
         void clbkLoadStateEx(FILEHANDLE scn, void *vs) override;
@@ -78,14 +80,14 @@ class HR1: public VESSEL3{
 		static void hlift(VESSEL *v, double beta, double M, double Re, void *context, double *cl, double *cm, double *cd);
 		static void vlift(VESSEL *v, double aoa, double M, double Re, void *context, double *cl, double *cm, double *cd);
 		void DefineMainPanel (PANELHANDLE hPanel);
-		void ScalePanel (PANELHANDLE hPanel, int viewW, int viewH);
-		
+		void ScalePanel (PANELHANDLE hPanel, int viewW, int viewH);	
 
 		MESHHANDLE hr1_vc;
 		MESHHANDLE hPanelMesh;
 		unsigned int mesh_Cockpit;
 		static SURFHANDLE panel2dtex;
-		
+		PARTICLESTREAMSPEC soundbarrierpart;
+		PSTREAM_HANDLE sndbarrier_fx;
 
 	private:
 	unsigned int anim_landing_gear;
@@ -94,9 +96,7 @@ class HR1: public VESSEL3{
 	double docking_port_proc;
 	AIRFOILHANDLE hwing;
 	CTRLSURFHANDLE hlaileron, hraileron;
+	
 };
-
-
-
 
 #endif  // !__HR1_H

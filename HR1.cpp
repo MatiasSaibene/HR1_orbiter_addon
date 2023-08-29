@@ -8,6 +8,7 @@
 // Control module for HR1 vessel class
 //==============================================================
 
+
 #define ORBITER_MODULE
 #include <cstdint>
 #include "HR1.h"
@@ -15,11 +16,13 @@
 #include <stdio.h>
 #include <strings.h>
 
+
 //Constructor
 HR1::HR1(OBJHANDLE hVessel, int flightmodel)
 :VESSEL3(hVessel, flightmodel){
 	landing_gear_proc = 0.0;
 	landing_gear_status = GEAR_DOWN;
+	docking_port_status = DCK_CLOSED;
 	DefineAnimations();
 	hr1_vc = oapiLoadMeshGlobal("HR1_VC");
 	hPanelMesh = NULL;
@@ -137,7 +140,6 @@ void HR1::clbkSetClassCaps(FILEHANDLE cfg){
     SetEmptyMass(HR1_EMPTYMASS);
 	SetDockParams(HR1_DOCK_POS, HR1_DOCK_DIR, HR1_DOCK_ROT);
 
-
     //Propellant resources
     PROPELLANT_HANDLE UXPS = CreatePropellantResource(HR1_FUELMASS);
 
@@ -145,6 +147,7 @@ void HR1::clbkSetClassCaps(FILEHANDLE cfg){
 	th_main[0] = CreateThruster(_V(-1.0026, 0.0113, -6.0037), _V(0, 0, 1), HR1_MAXMAINTH, UXPS, HR1_ISP);
 	th_main[1] = CreateThruster(_V(0.9974, 0.0113, -6.0037), _V(0, 0, 1), HR1_MAXMAINTH, UXPS, HR1_ISP);
 	thg_main = CreateThrusterGroup(th_main, 2, THGROUP_MAIN);
+	
 
 	SURFHANDLE exhaust_tex = oapiRegisterExhaustTexture("Exhaust");
     AddExhaust(th_main[0], 15, 1, _V(-1.0026, 0.0113, -6.0037), _V(0, 0, -1), exhaust_tex);
@@ -272,20 +275,24 @@ void HR1::clbkSetClassCaps(FILEHANDLE cfg){
 	hlaileron = CreateControlSurface3 (AIRCTRL_AILERON, 0.3, 1.7, _V( 7.5,0,-7.2), AIRCTRL_AXIS_XPOS, 1.0);
 	hraileron = CreateControlSurface3 (AIRCTRL_AILERON, 0.3, 1.7, _V(-7.5,0,-7.2), AIRCTRL_AXIS_XNEG, 1.0);
 	CreateControlSurface3 (AIRCTRL_ELEVATORTRIM, 0.3, 1.7, _V(   0,0,-7.2), AIRCTRL_AXIS_XPOS, 1.0);
+
 }
 
-//Load landing gear status from scenario file
+//Load landing gear and docking port status from scenario file
 void HR1::clbkLoadStateEx(FILEHANDLE scn, void *vs){
 	char *line;
 
 	while(oapiReadScenario_nextline(scn, line)){
 		if(!strncasecmp(line, "GEAR", 4)){
 			sscanf(line+4, "%d%lf", (int *)&landing_gear_status, &landing_gear_proc);
+			SetAnimation(anim_landing_gear, landing_gear_proc);
+		} else if(!strncasecmp(line, "DOCK", 4)){
+			sscanf(line+4, "%d%lf", (int *)&docking_port_status, &docking_port_proc);
+			SetAnimation(anim_docking_port, docking_port_proc);
 		} else {
 			ParseScenarioLineEx(line, vs);
 		}
 	}
-	SetAnimation(anim_landing_gear, landing_gear_proc);
 }
 
 //Save landing gear status to scenario file 
@@ -294,6 +301,8 @@ void HR1::clbkSaveState(FILEHANDLE scn){
 	SaveDefaultState(scn);
 	sprintf(cbuf, "%d %0.4f", landing_gear_status, landing_gear_proc);
 	oapiWriteScenario_string(scn, "GEAR", cbuf);
+	sprintf(cbuf, "%d %0.4f", docking_port_status, docking_port_proc);
+	oapiWriteScenario_string(scn, "DOCK", cbuf);
 }
 
 void HR1::SetGearDown(void){
@@ -318,8 +327,8 @@ void HR1::ActivateDockingPort(DockingPortStatus actiondckp){
 void HR1::clbkPostStep(double simt, double simdt, double mjd){
 	UpdateLandingGearAnimation(simdt);
 	UpdateDockingPortAnimation(simdt);
+	SndBarrierEffect(simt);
 }
-
 
 void HR1::UpdateLandingGearAnimation(double simdt) {
     if (landing_gear_status >= GEAR_DEPLOYING) {
@@ -349,6 +358,25 @@ void HR1::UpdateDockingPortAnimation(double simdt) {
         }
         SetAnimation(anim_docking_port, docking_port_proc);
     }
+}
+
+void HR1::SndBarrierEffect(double simt){
+	//double machnumber = GetMachNumber();
+	double airspeed = GetAirspeed();
+
+	if((airspeed >= 340) && (airspeed <= 350)){
+		//Sound speed barrier visual effect
+		static PARTICLESTREAMSPEC soundbarrierpart = {
+		0, 5.0, 16, 200, 0.15, 1.0, 5, 3.0, PARTICLESTREAMSPEC::DIFFUSE,
+		PARTICLESTREAMSPEC::LVL_PSQRT, 0, 2,
+		PARTICLESTREAMSPEC::ATM_PLOG, 1e-4, 1};
+		static VECTOR3 pos = {0, 2, 4};
+		static VECTOR3 dir = {0, 1, 0};
+		static double lvl = 0.1;
+		AddParticleStream(&soundbarrierpart, pos, dir, &lvl);
+	} else {
+		DelExhaustStream(&soundbarrierpart);
+	}
 }
 
 int HR1::clbkConsumeBufferedKey(int key, bool down, char *kstate){
@@ -393,36 +421,50 @@ bool HR1::clbkLoadPanel2D (int id, PANELHANDLE hPanel,
 
 void HR1::DefineMainPanel (PANELHANDLE hPanel)
 {
-  static int panelW = 1280;
-  static int panelH =  400;
+  static int panelW = 2048;
+  static int panelH =  512;
   float fpanelW = (float)panelW;
   float fpanelH = (float)panelH;
   static int texW   = 2048;
-  static int texH   = 1024;
+  static int texH   =  512;
   float ftexW   = (float)texW;
   float ftexH   = (float)texH;
   static NTVERTEX VTX[4] = {
-		{     0,     0,0,   0,0,0,   0.0f,        1.0f - fpanelH/texH},
-		{     0,fpanelH,0,   0,0,0,   0.0f,        1.0f},
-		{fpanelW,fpanelH,0,   0,0,0,   fpanelW/texW, 1.0f},
-		{fpanelW,     0,0,   0,0,0,   fpanelW/texW, 1.0f - fpanelH/texH}
-	};
-	static uint16_t IDX[6] = {
-		0,2,1,
-		2,0,3
-	};
+    {      0,      0,0,   0,0,0,            0.0f,1.0f-fpanelH/ftexH},
+    {      0,fpanelH,0,   0,0,0,            0.0f,1.0f              },
+    {fpanelW,fpanelH,0,   0,0,0,   fpanelW/ftexW,1.0f              },
+    {fpanelW,      0,0,   0,0,0,   fpanelW/ftexW,1.0f-fpanelH/ftexH}
+  };
+  static uint16_t IDX[6] = {
+    0,2,1,
+    2,0,3
+  };
 
   if (hPanelMesh) oapiDeleteMesh (hPanelMesh);
   hPanelMesh = oapiCreateMesh (0,0);
   MESHGROUP grp = {VTX, IDX, 4, 6, 0, 0, 0, 0, 0};
   oapiAddMeshGroup (hPanelMesh, &grp);
-  SetPanelBackground (hPanel, &panel2dtex, 1,  hPanelMesh, panelW, panelH, 0,
+  SetPanelBackground (hPanel, &panel2dtex, 1, hPanelMesh, panelW, panelH, 0,
     PANEL_ATTACH_BOTTOM | PANEL_MOVEOUT_BOTTOM);
-} 
+
+  static NTVERTEX VTX_MFD[4] = {
+	{100, 50,0,    0,0,0,    0,0},
+	{400, 50,0,    0,0,0,    1,0},
+	{100,350,0,    0,0,0,    0,1},
+	{400,350,0,    0,0,0,    1,1}
+  };
+  static uint16_t IDX_MFD[6] = {
+	0,1,2,
+	3,2,1
+  };
+  MESHGROUP grp_mfd = {VTX_MFD, IDX_MFD, 4, 6, 0, 0, 0, 0, 0};
+  oapiAddMeshGroup(hPanelMesh, &grp_mfd);
+  RegisterPanelMFDGeometry(hPanel, MFD_LEFT, 0, 1);
+}
 
 void HR1::ScalePanel (PANELHANDLE hPanel, int viewW, int viewH)
 {
-  double defscale = (double)viewW/(double)1280.0;
+  double defscale = (double)viewW/1366.0;
   double magscale = std::max (defscale, 1.0);
   SetPanelScaling (hPanel, defscale, magscale);
 }
@@ -469,9 +511,9 @@ void HR1::vlift(VESSEL *v, double aoa, double M, double Re, void *context, doubl
 
 DLLCLBK void InitModule (MODULEHANDLE hModule)
 {
-   
+
    HR1::panel2dtex = oapiLoadTexture ("HR1\\panel2d.dds");
-    
+
 }
 
 
@@ -485,7 +527,9 @@ DLLCLBK void ExitModule (MODULEHANDLE *hModule)
 
 //Vessel initialization
 DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel){
-    return new HR1(hvessel, flightmodel);
+    HR1 *hr1vssl = new HR1(hvessel, flightmodel);
+	return hr1vssl;
+	//return new HR1(hvessel, flightmodel);
 }
 
 
