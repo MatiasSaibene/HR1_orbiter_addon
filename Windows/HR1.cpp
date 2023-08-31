@@ -278,6 +278,16 @@ void HR1::clbkSetClassCaps(FILEHANDLE cfg){
 	hraileron = CreateControlSurface3 (AIRCTRL_AILERON, 0.3, 1.7, _V(-7.5,0,-7.2), AIRCTRL_AXIS_XNEG, 1.0);
 	CreateControlSurface3 (AIRCTRL_ELEVATORTRIM, 0.3, 1.7, _V(   0,0,-7.2), AIRCTRL_AXIS_XPOS, 1.0);
 
+	//Sound speed barrier visual effect
+	static PARTICLESTREAMSPEC soundbarrierpart = {
+		0, 30.0, 15, 350, 0.15, 1, 2, 1, 
+		PARTICLESTREAMSPEC::DIFFUSE,
+		PARTICLESTREAMSPEC::LVL_PSQRT, 0, 2,
+		PARTICLESTREAMSPEC::ATM_PLOG, 1e-4, 1
+	};
+	static VECTOR3 pos = {0.0046, -0.4042, -0.0988};
+	static VECTOR3 dir = {0, 0, -1};
+	AddParticleStream(&soundbarrierpart, pos, dir, &lvl);
 }
 
 //Load landing gear and docking port status from scenario file
@@ -329,7 +339,7 @@ void HR1::ActivateDockingPort(DockingPortStatus actiondckp){
 void HR1::clbkPostStep(double simt, double simdt, double mjd){
 	UpdateLandingGearAnimation(simdt);
 	UpdateDockingPortAnimation(simdt);
-	SndBarrierEffect(simt);
+	lvl = UpdateParticleLvl();
 }
 
 void HR1::UpdateLandingGearAnimation(double simdt) {
@@ -362,22 +372,14 @@ void HR1::UpdateDockingPortAnimation(double simdt) {
     }
 }
 
-void HR1::SndBarrierEffect(double simt){
-	//double machnumber = GetMachNumber();
-	double airspeed = GetAirspeed();
+double HR1::UpdateParticleLvl(){
+	double machnumber = GetMachNumber();
+	double airspd = GetAirspeed();
 
-	if((airspeed >= 340) && (airspeed <= 350)){
-		//Sound speed barrier visual effect
-		static PARTICLESTREAMSPEC soundbarrierpart = {
-		0, 5.0, 16, 200, 0.15, 1.0, 5, 3.0, PARTICLESTREAMSPEC::DIFFUSE,
-		PARTICLESTREAMSPEC::LVL_PSQRT, 0, 2,
-		PARTICLESTREAMSPEC::ATM_PLOG, 1e-4, 1};
-		static VECTOR3 pos = {0, 2, 4};
-		static VECTOR3 dir = {0, 1, 0};
-		static double lvl = 0.1;
-		AddParticleStream(&soundbarrierpart, pos, dir, &lvl);
+	if((machnumber >= 0.999) && (machnumber <= 1.001)){
+		return 1.0;
 	} else {
-		DelExhaustStream(&soundbarrierpart);
+		return 0.0;
 	}
 }
 

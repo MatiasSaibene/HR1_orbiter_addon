@@ -67,7 +67,7 @@ class HR1: public VESSEL3{
 		void CloseDockingPort(void);
 		void UpdateLandingGearAnimation(double);
 		void UpdateDockingPortAnimation(double);
-		void SndBarrierEffect(double);
+		double UpdateParticleLvl();
 
 
         virtual void clbkSetClassCaps(FILEHANDLE cfg);
@@ -88,6 +88,7 @@ class HR1: public VESSEL3{
 		static SURFHANDLE panel2dtex;
 		PARTICLESTREAMSPEC soundbarrierpart;
 		PSTREAM_HANDLE sndbarrier_fx;
+		double lvl;
 
 	private:
 	unsigned int anim_landing_gear;

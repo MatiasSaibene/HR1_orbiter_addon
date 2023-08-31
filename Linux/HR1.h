@@ -5,6 +5,7 @@
 #define STRICT 1
 #include "OrbiterAPI.h"
 #include "Orbitersdk.h"
+#include "Instrument.h"
 
 //Vessel parameters
 const double HR1_SIZE = 16; //Mean radius in meters.
@@ -67,7 +68,7 @@ class HR1: public VESSEL3{
 		void CloseDockingPort(void);
 		void UpdateLandingGearAnimation(double);
 		void UpdateDockingPortAnimation(double);
-		void SndBarrierEffect(double);
+		double UpdateParticleLvl();
 
 
         void clbkSetClassCaps(FILEHANDLE cfg) override;
@@ -88,6 +89,7 @@ class HR1: public VESSEL3{
 		static SURFHANDLE panel2dtex;
 		PARTICLESTREAMSPEC soundbarrierpart;
 		PSTREAM_HANDLE sndbarrier_fx;
+		double lvl;
 
 	private:
 	unsigned int anim_landing_gear;
