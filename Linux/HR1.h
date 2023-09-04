@@ -6,6 +6,7 @@
 #include "OrbiterAPI.h"
 #include "Orbitersdk.h"
 #include "Instrument.h"
+#include "VesselAPI.h"
 
 //Vessel parameters
 const double HR1_SIZE = 16; //Mean radius in meters.
@@ -55,12 +56,14 @@ static TOUCHDOWNVTX tdvtx_geardown[ntdvtx_geardown] = {
 };
 
 //HR1 class interface
-class HR1: public VESSEL3{
+class HR1: public VESSEL4{
     public:
 		enum LandingGearStatus {GEAR_DOWN, GEAR_UP, GEAR_DEPLOYING, GEAR_STOWING} landing_gear_status;
 		enum DockingPortStatus {DCK_CLOSED, DCK_OPEN, DCK_CLOSING, DCK_OPENING} docking_port_status;
+
         HR1(OBJHANDLE hVessel, int flightmodel);
         virtual ~HR1(); //Destructor
+
 		void DefineAnimations(void);
 		void ActivateLandingGear(LandingGearStatus action);
 		void SetGearDown(void);
@@ -70,34 +73,33 @@ class HR1: public VESSEL3{
 		void UpdateDockingPortAnimation(double);
 		double UpdateParticleLvl();
 
-
         void clbkSetClassCaps(FILEHANDLE cfg) override;
         void clbkLoadStateEx(FILEHANDLE scn, void *vs) override;
         void clbkSaveState(FILEHANDLE scn) override;
 		void clbkPostStep(double, double, double) override;
 		int clbkConsumeBufferedKey(int, bool, char *) override;
 		bool clbkLoadVC(int id) override;
-		virtual bool clbkLoadPanel2D(int id, PANELHANDLE hPanel, int viewW, int viewH) override;
+
+
 		static void hlift(VESSEL *v, double beta, double M, double Re, void *context, double *cl, double *cm, double *cd);
 		static void vlift(VESSEL *v, double aoa, double M, double Re, void *context, double *cl, double *cm, double *cd);
-		void DefineMainPanel (PANELHANDLE hPanel);
-		void ScalePanel (PANELHANDLE hPanel, int viewW, int viewH);	
+
 
 		MESHHANDLE hr1_vc;
-		MESHHANDLE hPanelMesh;
 		unsigned int mesh_Cockpit;
-		static SURFHANDLE panel2dtex;
 		PARTICLESTREAMSPEC soundbarrierpart;
-		PSTREAM_HANDLE sndbarrier_fx;
 		double lvl;
 
+
 	private:
-	unsigned int anim_landing_gear;
-	unsigned int anim_docking_port;
-	double landing_gear_proc;
-	double docking_port_proc;
-	AIRFOILHANDLE hwing;
-	CTRLSURFHANDLE hlaileron, hraileron;
+		unsigned int anim_landing_gear;
+		unsigned int anim_docking_port;
+	
+		double landing_gear_proc;
+		double docking_port_proc;
+
+		AIRFOILHANDLE hwing;
+		CTRLSURFHANDLE hlaileron, hraileron;
 	
 };
 

@@ -44,16 +44,4 @@ const int MFD_font_width[256] = {// MFD label font: character widths
 const int MFD_font_ypos = 0;
 const int MFD_font_height = 16;
 
-class MFDButtonCol: public PanelElement{
-	public:
-		MFDButtonCol (VESSEL3 *v, int _lr);
-		bool Redraw2D (SURFHANDLE surf);
-		bool ProcessMouse2D (int event, int mx, int my);
-	private:
-	int lr;
-	int xcnt;
-	int ytop;
-	int dy;
-};
-
 #endif //__HR1MFD_H
